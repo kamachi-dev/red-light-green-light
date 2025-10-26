@@ -1,5 +1,4 @@
 import cv2
-import time
 from datetime import datetime, timedelta
 
 class FaceDetectionCrossing:
