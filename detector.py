@@ -132,7 +132,7 @@ class Detector:
         current_value = self.data_buffer[-1]
         detected = current_value >= self.config.threshold
         
-        confidence = min(1.0, abs(current_value - self.config.threshold) / self.config.threshold) if self.config.threshold != 0 else 0.0
+        confidence = min(1.0, abs(current_value - self.config.threshold) / abs(self.config.threshold)) if self.config.threshold != 0 else 0.0
         
         return DetectionResult(
             detected=detected,
@@ -217,7 +217,7 @@ class Detector:
         threshold = self.config.sensitivity * std_dev
         detected = abs(current_value - mean) > threshold
         
-        confidence = min(1.0, abs(current_value - mean) / (threshold if threshold != 0 else 1.0))
+        confidence = min(1.0, abs(current_value - mean) / max(threshold, 1.0)) if threshold != 0 else 0.0
         
         return DetectionResult(
             detected=detected,
@@ -253,9 +253,11 @@ class Detector:
         current_value = self.data_buffer[-1]
         
         # Calculate relative change
+        # When previous value is zero, use absolute change as relative change cannot be computed
         if prev_value != 0:
             relative_change = abs((current_value - prev_value) / prev_value)
         else:
+            # Special case: treat absolute change as relative when prev_value is 0
             relative_change = abs(current_value)
         
         # Detect if change exceeds sensitivity threshold

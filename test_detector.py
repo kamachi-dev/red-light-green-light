@@ -241,6 +241,57 @@ class TestDetectorFeatures(unittest.TestCase):
         
         self.assertEqual(len(callback_called), 1)
         self.assertTrue(callback_called[0].detected)
+    
+    def test_negative_threshold(self):
+        """Test threshold detection with negative threshold."""
+        config = DetectionConfig(
+            detection_type=DetectionType.THRESHOLD,
+            threshold=-10.0
+        )
+        detector = Detector(config)
+        
+        result = detector.add_data_point(-5.0)
+        self.assertTrue(result.detected)
+        self.assertGreaterEqual(result.confidence, 0.0)
+        self.assertLessEqual(result.confidence, 1.0)
+        
+        result = detector.add_data_point(-15.0)
+        self.assertFalse(result.detected)
+    
+    def test_change_detection_from_zero(self):
+        """Test change detection when previous value is zero."""
+        config = DetectionConfig(
+            detection_type=DetectionType.CHANGE,
+            sensitivity=0.5
+        )
+        detector = Detector(config)
+        
+        detector.add_data_point(0.0)
+        result = detector.add_data_point(1.0)
+        
+        # Should handle division by zero gracefully
+        self.assertTrue(result.detected)
+        self.assertIsNotNone(result.confidence)
+    
+    def test_anomaly_detection_low_variance(self):
+        """Test anomaly detection with very low variance data."""
+        config = DetectionConfig(
+            detection_type=DetectionType.ANOMALY,
+            sensitivity=2.0,
+            window_size=5
+        )
+        detector = Detector(config)
+        
+        # Add identical values (zero variance)
+        for _ in range(4):
+            detector.add_data_point(10.0)
+        
+        # Small deviation should still work without division errors
+        result = detector.add_data_point(10.1)
+        
+        # Confidence should be bounded
+        self.assertGreaterEqual(result.confidence, 0.0)
+        self.assertLessEqual(result.confidence, 1.0)
 
 
 if __name__ == "__main__":
