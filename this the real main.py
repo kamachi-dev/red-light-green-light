@@ -64,13 +64,14 @@ def main():
     light_green = cv2.imread("assets/green.png", cv2.IMREAD_UNCHANGED)
 
     # Light timing
-    RED_DURATION = 20
-    GREEN_DURATION = 20
+    RED_DURATION = 25
+    GREEN_DURATION = 25
     YELLOW_DURATION = 2
     NO_FACE_LIMIT = 5
     NO_CAR_LIMIT = 5  
 
     green_started = False
+    red_started = False
     state = "red"
     previous_state = "red"
     last_change = datetime.now()
@@ -84,7 +85,7 @@ def main():
         ret, frame = cap.read()
         if not ret:
             break
-        frame = cv2.resize(frame, (int(1920 * 0.7), int(1080 * 0.7)))
+        frame = cv2.resize(frame, (int(1920 * 0.6), int(1080 * 0.6)))
         now = datetime.now()
         elapsed = (now - last_change).total_seconds()
 
@@ -122,18 +123,28 @@ def main():
 
         # ---- LOGIC ----
         if state == "red":
-            
-            no_face_time = (now - last_face_time).total_seconds()
-            print(f"current state: {state}: {previous_state}: {no_face_time}")
-            print(no_face_time >= NO_FACE_LIMIT and num_cars > 0)
-            if no_face_time >= NO_FACE_LIMIT and num_cars > 0:
+            if not red_started:
+                red_no_face_start = now  
+                red_started = True
+
+            if num_faces > 0:
+                red_no_face_start = now
+
+            no_face_elapsed = (now - red_no_face_start).total_seconds()
+            print(f"current state: {state}: {previous_state}: {no_face_elapsed}")
+            print(no_face_elapsed >= NO_FACE_LIMIT and num_cars > 0)
+
+            if no_face_elapsed >= NO_FACE_LIMIT and num_cars > 0:
                 previous_state = "red"
                 state = "yellow"
                 last_change = now
+                red_started = False 
+       
             elif elapsed >= RED_DURATION:
                 previous_state = "red"
                 state = "yellow"
                 last_change = now
+                red_started = False
 
         elif state == "yellow":
             print(f"current state: {state}: {previous_state}")
