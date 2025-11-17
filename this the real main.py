@@ -47,8 +47,8 @@ def overlay_image(base, overlay, pos=(0, 0)):
     return base
 
 def main():
-    # cap = cv2.VideoCapture(0)
-    cap = cv2.VideoCapture("D:\\Recordings (2023)\\New Recordings\\2025-11-17 21-07-10.mp4")  
+    cap = cv2.VideoCapture("newest.mp4")
+    # cap = cv2.VideoCapture("D:\\Recordings (2023)\\New Recordings\\2025-11-17 21-07-10.mp4")  
     # cap = cv2.VideoCapture("D:\\Recordings (2023)\\New Recordings\\2025-11-17 20-21-24.mp4")  
     detector = FaceDetectionCrossing(min_faces=1)
     car_detector = CarDetection()
