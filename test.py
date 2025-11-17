@@ -16,15 +16,26 @@ class FaceDetectionCrossing:
         )
         return faces
 
+class CarDetection:
+    def __init__(self):
+        self.car_cascade = cv2.CascadeClassifier("cars_haar.xml")
+
+    def detect_cars(self, frame):
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        cars = self.car_cascade.detectMultiScale(
+            gray, scaleFactor=1.1, minNeighbors=3, minSize=(60, 60)
+        )
+        return cars
+
 
 def overlay_image(base, overlay, pos=(0, 0)):
     x, y = pos
     h, w = overlay.shape[:2]
 
     if y + h > base.shape[0] or x + w > base.shape[1]:
-        return base  # Skip if out of bounds
+        return base
 
-    if overlay.shape[2] == 4:  # has alpha channel
+    if overlay.shape[2] == 4:  
         alpha_overlay = overlay[:, :, 3] / 255.0
         alpha_base = 1.0 - alpha_overlay
         for c in range(0, 3):
@@ -41,7 +52,9 @@ def overlay_image(base, overlay, pos=(0, 0)):
 def main():
 
     cap = cv2.VideoCapture(0)
+    # cap = cv2.VideoCapture("D:\\Recordings (2023)\\New Recordings\\2025-11-17 20-21-24.mp4")
     detector = FaceDetectionCrossing(min_faces=1)
+    car_detector = CarDetection()
 
     if not cap.isOpened():
         print("Error: Cannot open webcam")
@@ -53,17 +66,18 @@ def main():
     light_yellow = cv2.imread("assets/yellow.png", cv2.IMREAD_UNCHANGED)
     light_green = cv2.imread("assets/green.png", cv2.IMREAD_UNCHANGED)
 
-
-    # Light timing setup
+    # Light timing
     RED_DURATION = 30
     GREEN_DURATION = 30
     YELLOW_DURATION = 1
-    NO_FACE_LIMIT = 10  # shorten red after 10s if no face
+    NO_FACE_LIMIT = 10
+    NO_CAR_LIMIT = 10  
 
     state = "red"
     previous_state = "red"
     last_change = datetime.now()
     last_face_time = datetime.now()
+    last_car_time = datetime.now()
 
     print("Traffic Light Started (Press 'q' to quit)")
 
@@ -72,6 +86,7 @@ def main():
         if not ret:
             break
 
+        # FACE DETECTION
         faces = detector.detect_faces(frame)
         num_faces = len(faces)
         for (x, y, w, h) in faces:
@@ -83,28 +98,43 @@ def main():
         if num_faces > 0:
             last_face_time = now
 
+        cars = car_detector.detect_cars(frame)
+        num_cars = len(cars)
+        for (x, y, w, h) in cars:
+            cv2.rectangle(frame, (x, y), (x+w, y+h), (255, 0, 0), 2)
+
+        if num_cars > 0:
+            last_car_time = now
+
         # ---- LOGIC ----
         if state == "red":
             no_face_time = (now - last_face_time).total_seconds()
-            if (no_face_time >= NO_FACE_LIMIT and elapsed >= NO_FACE_LIMIT) or elapsed >= RED_DURATION:
+            
+            if no_face_time >= NO_FACE_LIMIT:
                 previous_state = "red"
-                state = "yellow"
+                state = "yellow" 
                 last_change = now
 
         elif state == "yellow":
             if elapsed >= YELLOW_DURATION:
                 if previous_state == "red":
                     state = "green"
-                else:
+                else: 
                     state = "red"
                 previous_state = state
                 last_change = now
 
         elif state == "green":
-            if elapsed >= GREEN_DURATION:
+            no_car_time = (now - last_car_time).total_seconds()
+            if no_car_time >= NO_CAR_LIMIT and num_faces > 0:
+                previous_state = "green"
+                state = "yellow"  # switch via yellow
+                last_change = now
+            elif elapsed >= GREEN_DURATION:
                 previous_state = "green"
                 state = "yellow"
                 last_change = now
+
 
         # ---- TIMER ----
         if state == "red":
@@ -133,13 +163,12 @@ def main():
 
         frame = overlay_image(frame, stoplight, (light_x, light_y))
 
-        # ---- FACE INFO ----
-        info = f"Faces: {num_faces}"
+        # INFO
+        info = f"Faces: {num_faces} | Cars: {num_cars}"  # <<< MODIFIED >>>
         cv2.putText(frame, info, (10, 70), cv2.FONT_HERSHEY_SIMPLEX,
                     0.7, (255, 255, 255), 2)
 
-        # ---- SHOW FRAME ----
-        cv2.imshow("Face Detection Crossing", frame)
+        cv2.imshow("Face + Car Detection Crossing", frame)
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
@@ -148,8 +177,5 @@ def main():
     cv2.destroyAllWindows()
     print("Stopped")
 
-
 if __name__ == "__main__":
     main()
-
-
